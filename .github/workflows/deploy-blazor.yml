@@ -1,7 +1,7 @@
-name: DotNetTemplates-DEPLOY
+name: DotNetTemplates-DEPLOY-BLAZOR
 # Deploys DotNetTemplates components to Nuget.org
 # Requires environment nuget.org
-# Requires secret variable NUGETORG_DEPLOY_APIKEY variable 
+# Requires secret variable NUGETORG_DEPLOY_APIKEY variable
 # Requires secret variable DEPLOY_SIGNING_KEY_SNK which must be a base64 encoded byte array that will be used to generate the SNK file.
 #   Secret Variable's value can be created in powershell with:
 #         $pfx_cert = Get-Content 'GoC.WebTemplate.snk' -Encoding Byte
@@ -23,7 +23,6 @@ on:
 
 jobs:
   build:
-
     runs-on: windows-2022
 
     environment: ${{ inputs.environment }}
@@ -35,8 +34,6 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: |
-          3.1.x
-          5.0.x
           6.0.x
 
     - name: Setup MSBuild
@@ -46,6 +43,7 @@ jobs:
       uses: NuGet/setup-nuget@v1
       with:
         nuget-version: '6.0.x'
+
     - name: Nuget Cache
       uses: actions/cache@v3
       with:
@@ -56,7 +54,7 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.config', '**/*.csproj') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-      
+
     - name: Validate version
       run: |
         nuget install Nuget.Core -Version 2.14.0 -OutputDirectory .\packages.pipeline
@@ -68,12 +66,7 @@ jobs:
     - name: Set versions
       run: |
         echo "Setting version to [$env:DEPLOY_VERSION]"
-        .scripts\core-version.ps1 "$env:DEPLOY_VERSION" Components\Components.csproj
-        .scripts\core-version.ps1 "$env:DEPLOY_VERSION" Components.Core\Components.Core.csproj
-        .scripts\core-version.ps1 "$env:DEPLOY_VERSION" CoreMVC\CoreMVC.csproj
-        .scripts\fw-version.ps1 "$env:DEPLOY_VERSION" Components.Framework\Properties\AssemblyInfo.cs
-        .scripts\fw-version.ps1 "$env:DEPLOY_VERSION" WebForms\Properties\AssemblyInfo.cs
-        .scripts\fw-version.ps1 "$env:DEPLOY_VERSION" MVC\Properties\AssemblyInfo.cs
+        .scripts\core-version.ps1 "$env:DEPLOY_VERSION" Blazor\Blazor.csproj
       env:
         DEPLOY_VERSION: ${{ inputs.deploy_version }}
 
@@ -90,77 +83,27 @@ jobs:
       #run: dotnet build --no-restore
       run: msbuild GoC.WebTemplate.sln /p:Configuration=Release
 
-    - name: Test Components
-      run: dotnet test Components.Tests --no-build --configuration Release --verbosity normal
-
-    - name: Test Components.Core
-      run: dotnet test Components.Core.Tests --no-build --configuration Release --verbosity normal
-
-    - name: Test Components.Framework
-      run: |
-        & packages\xunit.runner.console.2.6.6\tools\net461\xunit.console.exe Components.Framework.Tests\bin\Release\GoC.WebTemplate.Components.Framework.Tests.dll
-
     - name: Create Nuget Packages
       run: |
-        dotnet pack Components\Components.csproj --no-build -c Release -o .
-        dotnet pack Components.Core\Components.Core.csproj --no-build -c Release -o .
-        dotnet pack CoreMVC\CoreMVC.csproj --no-build -c Release -o .
-        .scripts\package.ps1 Components.Framework Components.Framework
-        nuget pack Components.Framework\Components.Framework.nuspec
-        .scripts\package.ps1 MVC MVC
-        nuget pack MVC\MVC.nuspec
-        .scripts\package.ps1 WebForms WebForms
-        nuget pack WebForms\WebForms.nuspec
+        dotnet pack Blazor\Blazor.csproj --no-build -c Release -o .
 
-    - name: Upload Components
+    - name: Upload Blazor
       uses: actions/upload-artifact@v3
       with:
-        name: Components
-        path: GoC.WebTemplate-Components.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
-
-    - name: Upload Components.Core
-      uses: actions/upload-artifact@v3
-      with:
-        name: Components.Core
-        path: GoC.WebTemplate-Components.Core.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
-
-    - name: Upload CoreMVC
-      uses: actions/upload-artifact@v3
-      with:
-        name: CoreMVC
-        path: GoC.WebTemplate-CoreMVC.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
-
-    - name: Upload Components.Framework
-      uses: actions/upload-artifact@v3
-      with:
-        name: Components.Framework
-        path: GoC.WebTemplate-Components.Framework.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
-
-    - name: Upload MVC
-      uses: actions/upload-artifact@v3
-      with:
-        name: MVC
-        path: GoC.WebTemplate-MVC.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
-
-    - name: Upload WebForms
-      uses: actions/upload-artifact@v3
-      with:
-        name: WebForms
-        path: GoC.WebTemplate-WebForms.${{ inputs.deploy_version }}.nupkg
+        name: Blazor
+        path: GoC.WebTemplate-Blazor.${{ inputs.deploy_version }}.nupkg
         if-no-files-found: error
 
   deploy:
     runs-on: windows-2019
+
     needs: build
+
     strategy:
+
       matrix:
-        templateComponent: [Components, Components.Core, CoreMVC, Components.Framework, MVC, WebForms]
-        
+        templateComponent: [Blazor]
+
     environment: ${{ inputs.environment }}
 
     steps:
