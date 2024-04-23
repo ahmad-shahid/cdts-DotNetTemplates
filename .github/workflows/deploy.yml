@@ -211,8 +211,6 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: |
-          3.1.x
-          5.0.x
           6.0.x
 
     - name: Setup MSBuild
@@ -244,7 +242,6 @@ jobs:
     - name: Set versions
       run: |
         echo "Setting version to [$env:DEPLOY_VERSION]"
-        .scripts\core-version.ps1 "$env:DEPLOY_VERSION" Entities\Entities.csproj
         .scripts\core-version.ps1 "$env:DEPLOY_VERSION" Blazor\Blazor.csproj
       env:
         DEPLOY_VERSION: ${{ inputs.deploy_version }}
@@ -264,15 +261,7 @@ jobs:
 
     - name: Create Nuget Packages
       run: |
-        dotnet pack Entities\Entities.csproj --no-build -c Release -o .
         dotnet pack Blazor\Blazor.csproj --no-build -c Release -o .
-
-    - name: Upload Entities
-      uses: actions/upload-artifact@v3
-      with:
-        name: Entities
-        path: GoC.WebTemplate-Entities.${{ inputs.deploy_version }}.nupkg
-        if-no-files-found: error
 
     - name: Upload Blazor
       uses: actions/upload-artifact@v3
@@ -287,7 +276,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        templateComponent: [Entities, Blazor]
+        templateComponent: [Blazor]
 
     environment: ${{ inputs.environment }}
 
